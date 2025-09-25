@@ -1,0 +1,37 @@
+﻿# ========================
+# Build / Bin / Obj files
+# ========================
+bin/
+obj/
+out/
+
+# ========================
+# Visual Studio files
+# ========================
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# ========================
+# Rider / JetBrains files
+# ========================
+*.idea/
+*.iml
+*.iws
+
+# ========================
+# VS Code
+# ========================
+.vscode/
+
+# ========================
+# Local development secrets
+# ========================
+appsettings.Development.json
+.env
+
+# ========================
+# Logs
+# ========================
+*.log
