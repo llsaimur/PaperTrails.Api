@@ -1,0 +1,6 @@
+@PaperTrails.Api_HostAddress = http://localhost:5286
+
+GET {{PaperTrails.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
