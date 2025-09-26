@@ -11,5 +11,6 @@ namespace PaperTrails.Api.Models
         [Required]
         public string Email { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public ICollection<Category> Categories { get; set; } = new List<Category>();
     }
 }
