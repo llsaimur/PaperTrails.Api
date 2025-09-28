@@ -1,4 +1,7 @@
 ﻿using PaperTrails.Api.DTOs.Paperless;
+using System.Text;
+using System.Text.Json;
+
 
 namespace PaperTrails.Api.Services
 {
@@ -12,7 +15,7 @@ namespace PaperTrails.Api.Services
         {
             _httpClient = httpClient;
             _paperlessUrl = configuration["Paperless:Url"];
-            _token = configuration["Paperless:ApiKey"];
+            _token = configuration["Paperless:Token"];
         }
 
         public async Task<CreateCategoryResult> CreateCategory(string name)
@@ -21,14 +24,15 @@ namespace PaperTrails.Api.Services
             {
                 name,
             };
+            var jsonString = JsonSerializer.Serialize(payload);
 
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_paperlessUrl}/document_types/");
-            request.Content = JsonContent.Create( payload );
-            request.Headers.Add( "Authorization", $"Token {_token}" );
+            request.Content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+            request.Headers.Add("Authorization", $"Token {_token}");
 
-            var response = await _httpClient.SendAsync( request );
+            var response = await _httpClient.SendAsync(request);
 
-            if(!response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
                 return new CreateCategoryResult
@@ -43,6 +47,60 @@ namespace PaperTrails.Api.Services
             {
                 Id = category.Id,
                 Name = category.Name,
+            };
+        }
+
+        public async Task<UpdateCategoryResult> UpdateCategory(string name, int id)
+        {
+            var payload = new
+            {
+                name,
+            };
+            var jsonString = JsonSerializer.Serialize(payload);
+
+            var request = new HttpRequestMessage(HttpMethod.Put, $"{_paperlessUrl}/document_types/{id}/");
+            request.Content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+            request.Headers.Add("Authorization", $"Token {_token}");
+
+            var response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                return new UpdateCategoryResult
+                {
+                    Error = errorContent,
+                };
+            }
+
+            var category = await response.Content.ReadFromJsonAsync<UpdateCategoryResult>();
+
+            return new UpdateCategoryResult
+            {
+                Name = category.Name,
+            };
+        }
+
+        public async Task<DeleteCategoryResult> DeleteCategory(int id)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"{_paperlessUrl}/document_types/{id}/");
+            request.Headers.Add("Authorization", $"Token {_token}");
+
+            var response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                return new DeleteCategoryResult
+                {
+                    Success = false,
+                    Error = errorContent,
+                };
+            }
+
+            return new DeleteCategoryResult
+            {
+                Success = true
             };
         }
     }
