@@ -11,5 +11,6 @@ namespace PaperTrails.Api.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<Document> Documents { get; set; }
     }
 }
