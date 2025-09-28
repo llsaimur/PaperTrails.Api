@@ -21,5 +21,6 @@ namespace PaperTrails.Api.Models
         public int DocumentTypeId { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime CreateddAt { get; set; } = DateTime.UtcNow;
+        public ICollection<Document> Documents { get; set; } = new List<Document>();
     }
 }
