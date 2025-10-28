@@ -4,6 +4,8 @@
     {
         SUCCESS,
         FAILED,
-        PENDING
+        PENDING,
+        STARTED,
+        FAILURE
     }
 }

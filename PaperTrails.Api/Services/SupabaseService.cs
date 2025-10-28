@@ -73,11 +73,17 @@ namespace PaperTrails.Api.Services
 
             try
             {
-                await _supabaseClient.Auth.ResetPasswordForEmail(email);
+                var options = new Supabase.Gotrue.ResetPasswordForEmailOptions(email)
+                {
+                    RedirectTo = "http://localhost:3000/update-password.html"
+                };
+
+                await _supabaseClient.Auth.ResetPasswordForEmail(options);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"[ResetPasswordForEmail] Error: {ex.Message}");
                 return false;
             }
         }
@@ -105,5 +111,63 @@ namespace PaperTrails.Api.Services
                 };
             }
         }
+
+        public async Task<SupabaseResult> UpdatePasswordAsync(string newPassword)
+        {
+            await EnsureInitializedAsync();
+
+            try
+            {
+                var response = await _supabaseClient.Auth.Update(new Supabase.Gotrue.UserAttributes
+                {
+                    Password = newPassword,
+                });
+
+                return new SupabaseResult
+                {
+                    User = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new SupabaseResult
+                {
+                    Error = ex.Message
+                };
+            }
+        }
+
+        public async Task<bool> SendEmailChangeConfirmationAsync(string newEmail)
+        {
+            await EnsureInitializedAsync();
+
+            try
+            {
+                var currentUser = _supabaseClient.Auth.CurrentUser;
+                if (currentUser == null)
+                {
+                    Console.WriteLine("[SendEmailChangeConfirmation] No user logged in.");
+                    return false;
+                }
+
+                // Update email triggers confirmation email
+                await _supabaseClient.Auth.Update(new Supabase.Gotrue.UserAttributes
+                {
+                    Email = newEmail
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SendEmailChangeConokafirmation] Error: {ex.Message}");
+                return false;
+            }
+        }
+
+
+
+
+
     }
 }

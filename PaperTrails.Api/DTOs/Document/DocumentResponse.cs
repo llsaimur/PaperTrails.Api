@@ -13,5 +13,6 @@ namespace PaperTrails.Api.DTOs.Document
         public string Status { get; set; } = default!;
         public string TaskId { get; set; } = default!;
         public PaperlessDocumentResponse? PaperlessData { get; set; }
+        public bool IsImportant { get; set; }
     }
 }

@@ -66,7 +66,8 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+// commented out for testing
+//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 

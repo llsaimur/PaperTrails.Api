@@ -128,13 +128,14 @@ namespace PaperTrails.Api.Controllers
                     });
                 }
 
-                if (statusResult == StatusResult.FAILED)
+                if (statusResult == StatusResult.FAILED || statusResult == StatusResult.FAILURE)
                 {
-                    return base.Ok(new DTOs.Document.TaskStatusResponse
+                    return StatusCode(StatusCodes.Status502BadGateway, new
                     {
-                        Message = "Document processing failed.",
+                        error = "Document processing failed at Paperless."
                     });
                 }
+
 
                 if (statusResult == StatusResult.PENDING)
                 {
@@ -143,10 +144,18 @@ namespace PaperTrails.Api.Controllers
                         Message = "Document is still being processed.",
                     });
                 }
-                
+
+                if (statusResult == StatusResult.STARTED)
+                {
+                    return base.Ok(new DTOs.Document.TaskStatusResponse
+                    {
+                        Message = "Document processing has started.",
+                    });
+                }
+
                 document.Status = result.Status;
                 document.DocumentId = int.Parse(result.RelatedDocument);
-                document.ContentUrl = $"{_paperlessUrl}/{int.Parse(result.RelatedDocument)}/download/";
+                document.ContentUrl = $"{_paperlessUrl}/documents/{int.Parse(result.RelatedDocument)}/download/";
                 document.UpdatedAt = DateTime.UtcNow;
 
                 _db.Documents.Update(document);
@@ -257,20 +266,25 @@ namespace PaperTrails.Api.Controllers
            
         }
 
-       
+
         [HttpGet]
         public async Task<IActionResult> GetDocuments(
-         [FromQuery] int page = 1,
-         [FromQuery] int limit = 10,
-         [FromQuery] string? categoryId = null)
+    [FromQuery] int page = 1,
+    [FromQuery] int limit = 10,
+    [FromQuery] string? categoryId = null,
+    [FromQuery] bool? importantOnly = null)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
 
             IQueryable<Document> query = _db.Documents.Where(d => d.UserId == userId);
 
             if (!string.IsNullOrEmpty(categoryId))
                 query = query.Where(d => d.CategoryId == categoryId);
+
+            if (importantOnly.HasValue && importantOnly.Value)
+                query = query.Where(d => d.IsImportant);
 
             var total = await query.CountAsync();
 
@@ -301,7 +315,6 @@ namespace PaperTrails.Api.Controllers
                 return StatusCode(500, new { error = $"Failed to fetch Paperless documents: {ex.Message}" });
             }
 
-            // Map to response DTO
             var data = documents.Select(document => new DocumentResponse
             {
                 Id = document.Id,
@@ -312,6 +325,7 @@ namespace PaperTrails.Api.Controllers
                 ContentUrl = document.ContentUrl,
                 Status = document.Status,
                 TaskId = document.TaskId,
+                IsImportant = document.IsImportant, // Include importance flag in response
                 PaperlessData = document.DocumentId != -1 && paperlessDataMap.ContainsKey(document.DocumentId)
                     ? paperlessDataMap[document.DocumentId]
                     : null
@@ -325,6 +339,43 @@ namespace PaperTrails.Api.Controllers
                 totalPages = (int)Math.Ceiling(total / (double)limit),
                 data
             });
+        }
+
+
+
+
+        [HttpGet("{id}/pdf")]
+        public async Task<IActionResult> GetDocumentPdf(string id)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var document = await _db.Documents
+                .FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
+
+            if (document == null)
+            {
+                return NotFound(new { error = "Document not found" });
+            }
+
+            if (string.IsNullOrWhiteSpace(document.ContentUrl) || document.ContentUrl == "PROCESSING")
+            {
+                return BadRequest(new { error = "Document file not available yet" });
+            }
+
+            try
+            {
+                var pdfStream = await _paperlessService.GetDocumentPdfAsync(document.ContentUrl);
+
+                return File(pdfStream, "application/pdf", $"{document.Title ?? "document"}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
 
@@ -435,6 +486,27 @@ namespace PaperTrails.Api.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
+
+        [HttpPatch("{id}/important")]
+        public async Task<IActionResult> MarkDocumentImportant(string id, [FromQuery] bool important)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var document = await _db.Documents.FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
+            if (document == null)
+                return NotFound(new { error = "Document not found" });
+
+            document.IsImportant = important;
+            document.UpdatedAt = DateTime.UtcNow;
+
+            _db.Documents.Update(document);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = $"Document marked as {(important ? "important" : "not important")}" });
+        }
+
 
     }
 

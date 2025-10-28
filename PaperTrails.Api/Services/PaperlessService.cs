@@ -306,6 +306,33 @@ namespace PaperTrails.Api.Services
             };
         }
 
+        public async Task<Stream> GetDocumentPdfAsync(string contentUrl)
+        {
+            if (string.IsNullOrWhiteSpace(contentUrl))
+                throw new ArgumentException("Content URL cannot be null or empty.", nameof(contentUrl));
+
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, contentUrl);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Token", _token);
+
+                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"Failed to fetch PDF from Paperless: {errorContent}");
+                }
+
+                return await response.Content.ReadAsStreamAsync();
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new Exception("Network error while fetching document PDF from Paperless.", ex);
+            }
+        }
+
+
         public async Task<DeleteCategoryResult> DeleteCategory(int id)
         {
             var request = new HttpRequestMessage(HttpMethod.Delete, $"{_paperlessUrl}/document_types/{id}/");
