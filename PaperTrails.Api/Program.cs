@@ -15,6 +15,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddSingleton<SupabaseService>();
 builder.Services.AddHttpClient<PaperlessService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<ReminderProcessor>();
+builder.Services.AddScoped<IPushNotificationService, LoggingPushNotificationService>();
+builder.Services.AddScoped<INotificationService, FcmNotificationService>();
+builder.Services.AddHttpClient<IAiAssistantService, AiAssistantService>();
+builder.Services.AddScoped<IAiAssistantService, AiAssistantService>();
+
+
+// register hosted worker
+builder.Services.AddHostedService<PaperTrails.Api.HostedServices.ReminderHostedService>();
+
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
